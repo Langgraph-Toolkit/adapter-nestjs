@@ -15,6 +15,7 @@ import type {
   RunOptions,
   RunResult,
   StepEvent,
+  ToolkitRuntime,
 } from "@langgraph-toolkit/core";
 import { GraphRuntimeError } from "@langgraph-toolkit/core";
 
@@ -81,8 +82,10 @@ export class GraphService {
 
 /** Options for LangGraphModule.forRoot(). */
 export interface LangGraphModuleOptions {
-  /** Named registry holding the graphs exposed to controllers. */
-  graphs: GraphRegistry;
+  /** Runtime facade holding the graphs exposed to controllers. */
+  runtime?: ToolkitRuntime;
+  /** Backward-compatible registry option. */
+  graphs?: GraphRegistry;
   /** Optional global provider flag. */
   global?: boolean;
 }
@@ -90,10 +93,12 @@ export interface LangGraphModuleOptions {
 /** DynamicModule-shaped factory independent of the exact Nest version. */
 export class LangGraphModule {
   static forRoot(options: LangGraphModuleOptions) {
+    const graphs = options.runtime ?? options.graphs;
+    if (graphs === undefined) throw new GraphRuntimeError("LangGraphModule.forRoot requires runtime or graphs.");
     return {
       module: LangGraphModule as never,
       global: options.global ?? false,
-      providers: [{ provide: GraphService, useValue: new GraphService(options.graphs) }],
+      providers: [{ provide: GraphService, useValue: new GraphService(graphs) }],
       exports: [GraphService],
     };
   }
