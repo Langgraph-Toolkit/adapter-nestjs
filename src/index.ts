@@ -1,11 +1,11 @@
 /**
- * @langgraph/adapter-nestjs
+ * @langgraph-toolkit/adapter-nestjs
  *
  * NestJS binding: a DynamicModule that registers a generic GraphService
  * wrapping the core GraphRegistry. Controllers can expose graphs with Nest's
  * built-in decorators while keeping application contracts at the call site.
  *
- * Install: npm install @nestjs/common @nestjs/core @langgraph/adapter-nestjs
+ * Install: npm install @nestjs/common @nestjs/core @langgraph-toolkit/adapter-nestjs
  */
 import type {
   DefaultGraphContracts,
@@ -15,8 +15,8 @@ import type {
   RunOptions,
   RunResult,
   StepEvent,
-} from "@langgraph/toolkit";
-import { GraphRuntimeError } from "@langgraph/toolkit";
+} from "@langgraph-toolkit/core";
+import { GraphRuntimeError } from "@langgraph-toolkit/core";
 
 /** Nest-injectable wrapper around GraphRegistry with explicit generic methods. */
 export class GraphService {

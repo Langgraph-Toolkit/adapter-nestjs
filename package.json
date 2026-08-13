@@ -1,7 +1,7 @@
 {
-  "name": "@langgraph/adapter-nestjs",
+  "name": "@langgraph-toolkit/adapter-nestjs",
   "version": "0.1.0",
-  "description": "NestJS binding for @langgraph/toolkit: GraphService + DynamicModule + @Sse() usage.",
+  "description": "NestJS binding for @langgraph-toolkit/core: GraphService + DynamicModule + @Sse() usage.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,7 +19,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@langgraph/toolkit": "0.1.0"
+    "@langgraph-toolkit/core": "0.1.0"
   },
   "peerDependencies": {
     "@nestjs/common": "^10 || ^11"
