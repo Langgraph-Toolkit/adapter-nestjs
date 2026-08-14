@@ -1,6 +1,7 @@
 import { firstValueFrom, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
-import { GraphRegistry, defineGraph, defineState } from "@langgraph-toolkit/core";
+import { defineGraph, defineState } from "@langgraph-toolkit/core";
+import { GraphRegistry } from "@langgraph-toolkit/core/runtime";
 import {
   BoundGraphService,
   GraphHttpExceptionFilter,

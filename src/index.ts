@@ -17,13 +17,12 @@ import type {
 import type {
   DefaultGraphContracts,
   GraphContracts,
-  GraphRegistry,
   JsonObject,
   RunOptions,
   RunResult,
   StepEvent,
-  ToolkitRuntime,
 } from "@langgraph-toolkit/core";
+import type { GraphRegistry, ToolkitRuntime } from "@langgraph-toolkit/core/runtime";
 import { GraphRuntimeError, ToolkitError } from "@langgraph-toolkit/core";
 
 /** JSON-safe error payload emitted by Nest SSE streams. */
