@@ -1,6 +1,6 @@
 # @langgraph-toolkit/adapter-nestjs
 
-NestJS module and service adapter for Langgraph-Toolkit. The module owns framework lifecycle and dependency injection while the graph resource owns state, MCP, checkpoint, actor, and policy defaults.
+**Let NestJS own dependency injection while the graph remains framework-neutral.** The module binds a compiled registry to NestJS lifecycle and services. The graph resource still owns state, MCP, checkpoint, actor, provider, and policy defaults.
 
 ## Install
 
@@ -8,7 +8,7 @@ NestJS module and service adapter for Langgraph-Toolkit. The module owns framewo
 npm install @nestjs/common @nestjs/core @langgraph-toolkit/core @langgraph-toolkit/adapter-nestjs
 ```
 
-## Module setup
+## Minimal module setup
 
 ```ts
 import { Module } from "@nestjs/common";
@@ -21,13 +21,22 @@ import { runtime } from "./database-chat/resource.js";
 export class AppModule {}
 ```
 
-`GraphService` provides `has`, `list`, `run`, and `stream` methods for controllers. Keep controller methods thin and pass only request input plus a thread identifier when resuming a graph.
+`GraphService` provides `has`, `list`, `run`, and `stream` methods for controllers. A controller should pass business input and a thread identifier for resume, not reconstruct graph infrastructure on every request.
 
-## Public API
+## One resource, many framework bindings
 
-The package exports `LangGraphModule`, `LangGraphModuleOptions`, `GraphService`, and `GraphRuntimeError`. The module does not install Express, Fastify, MCP, or community providers.
+| Layer | NestJS owns | Resource owns |
+|---|---|---|
+| Lifecycle | Module registration and dependency injection | Graph construction and runtime defaults |
+| Transport | Controller request and response | Typed output and event semantics |
+| Security | Host authentication integration | Actor, tier, policy, and approval contracts |
+| Persistence | Application connection lifecycle | Checkpoint contract and thread semantics |
 
-## Development
+The resource can be mounted by Express, Fastify, StruxJS, or a worker without changing its graph source.
+
+## Public API and development
+
+The package exports `LangGraphModule`, `LangGraphModuleOptions`, `GraphService`, and `GraphRuntimeError`. It does not install Express, Fastify, MCP, or community providers.
 
 ```bash
 npm install
