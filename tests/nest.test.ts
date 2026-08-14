@@ -1,6 +1,12 @@
+import { firstValueFrom, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
 import { GraphRegistry, defineGraph, defineState } from "@langgraph-toolkit/core";
-import { GraphService, LangGraphModule } from "../src/index.js";
+import {
+  BoundGraphService,
+  GraphHttpExceptionFilter,
+  GraphService,
+  LangGraphModule,
+} from "../dist/index.js";
 
 function makeRegistry(): GraphRegistry {
   const registry = new GraphRegistry();
@@ -25,9 +31,12 @@ describe("adapter-nestjs", () => {
     const result = await service.run("ping", {});
     expect(result.state.done).toBe(true);
 
-    const events = [];
-    for await (const event of service.streamAsObservable("ping", {})) events.push(event.type);
-    expect(events).toEqual(expect.arrayContaining(["node_start", "node_end", "edge"]));
+    const events = await firstValueFrom(service.streamAsObservable("ping", {}).pipe(toArray()));
+    expect(events.map((event) => event.type)).toEqual(expect.arrayContaining(["node_start", "node_end", "edge"]));
+
+    const bound = service.bind<{ done: boolean }, Record<string, never>>("ping");
+    expect(bound).toBeInstanceOf(BoundGraphService);
+    expect((await bound.run({})).state.done).toBe(true);
   });
 
   it("returns a Nest-compatible dynamic module without owning framework wiring", () => {
@@ -35,5 +44,9 @@ describe("adapter-nestjs", () => {
     expect(dynamicModule.global).toBe(true);
     expect(dynamicModule.exports).toContain(GraphService);
     expect(dynamicModule.providers?.[0]).toMatchObject({ provide: GraphService });
+  });
+
+  it("exposes a typed HTTP filter for toolkit errors", () => {
+    expect(GraphHttpExceptionFilter).toBeDefined();
   });
 });

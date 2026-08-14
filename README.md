@@ -21,7 +21,40 @@ import { runtime } from "./database-chat/resource.js";
 export class AppModule {}
 ```
 
-`GraphService` provides `has`, `list`, `run`, and `stream` methods for controllers. A controller should pass business input and a thread identifier for resume, not reconstruct graph infrastructure on every request.
+For applications whose graph resource needs asynchronous MCP credentials or provider inference, let NestJS own resource creation and cleanup with `forRootAsync`. The factory may return either a runtime or `{ runtime, close }`; the adapter registers the runtime and invokes `close` during module shutdown.
+
+```ts
+@Module({
+  imports: [
+    LangGraphModule.forRootAsync({
+      useFactory: async () => createChatApplication(),
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+`GraphService` provides `has`, `list`, `run`, and `stream` methods for controllers. Use `bind(name)` once in a controller to retain the graph's state/input/output generics without repeating the graph name and generic list on every route. `streamSse` returns a typed Nest `Observable` envelope and serializes toolkit errors, so controllers do not need to set headers, stringify events, or map runtime errors manually.
+
+```ts
+@Controller("chat")
+@UseFilters(GraphHttpExceptionFilter)
+export class ChatController {
+  private readonly chat = this.graphs.bind<ChatState, ChatInput>("chat");
+
+  @Post("run")
+  run(@Body() input: ChatInput) {
+    return this.chat.run(input);
+  }
+
+  @Sse("stream")
+  stream(@Query() input: ChatInput) {
+    return this.chat.streamSse(input);
+  }
+
+  constructor(private readonly graphs: GraphService) {}
+}
+```
 
 ## One resource, many framework bindings
 
@@ -36,7 +69,7 @@ The resource can be mounted by Express, Fastify, StruxJS, or a worker without ch
 
 ## Public API and development
 
-The package exports `LangGraphModule`, `LangGraphModuleOptions`, `GraphService`, and `GraphRuntimeError`. It does not install Express, Fastify, MCP, or community providers.
+The package exports `LangGraphModule`, `LangGraphModuleOptions`, `LangGraphModuleAsyncOptions`, `LangGraphApplication`, `GraphService`, `BoundGraphService`, `GraphHttpExceptionFilter`, and `GraphRuntimeError`. It does not install Express, Fastify, MCP, or community providers.
 
 ```bash
 npm install
