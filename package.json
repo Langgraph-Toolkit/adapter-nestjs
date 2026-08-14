@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "pnpm run build && vitest run"
+    "test": "npm run build && vitest run"
   },
   "dependencies": {
     "@langgraph-toolkit/core": "0.1.2"
