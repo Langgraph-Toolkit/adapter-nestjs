@@ -96,7 +96,7 @@ export class LangGraphModule {
     const graphs = options.runtime ?? options.graphs;
     if (graphs === undefined) throw new GraphRuntimeError("LangGraphModule.forRoot requires runtime or graphs.");
     return {
-      module: LangGraphModule as never,
+      module: LangGraphModule,
       global: options.global ?? false,
       providers: [{ provide: GraphService, useValue: new GraphService(graphs) }],
       exports: [GraphService],
