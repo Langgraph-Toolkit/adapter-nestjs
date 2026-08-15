@@ -15,6 +15,8 @@ import type {
   Type,
 } from "@nestjs/common";
 import type {
+  CompiledGraph,
+  GraphDefinition,
   DefaultGraphContracts,
   GraphContracts,
   JsonObject,
@@ -22,7 +24,8 @@ import type {
   RunResult,
   StepEvent,
 } from "@langgraph-toolkit/core";
-import type { GraphRegistry, ToolkitRuntime } from "@langgraph-toolkit/core/runtime";
+import { GraphRegistry } from "@langgraph-toolkit/core/runtime";
+import { ToolkitRuntime } from "@langgraph-toolkit/core/runtime";
 import { GraphRuntimeError, ToolkitError } from "@langgraph-toolkit/core";
 
 /** JSON-safe error payload emitted by Nest SSE streams. */
@@ -243,6 +246,17 @@ export interface LangGraphModuleOptions {
   close?: () => Promise<void>;
 }
 
+/** Zero-config options for createNestJSAdapter(). */
+export interface NestJSAdapterOptions extends Pick<LangGraphModuleOptions, "global" | "close"> {}
+
+/** NestJS resource returned by createNestJSAdapter(). */
+export interface NestJSAdapter<TGraph extends object = object> {
+  readonly graph: TGraph;
+  readonly runtime: GraphRegistry;
+  readonly service: GraphService;
+  readonly module: DynamicModule;
+}
+
 type LangGraphInjectionToken = string | symbol | Type<object>;
 
 /** Application resource returned by an async factory, including optional cleanup. */
@@ -313,6 +327,42 @@ export class LangGraphModule {
       exports: [GraphService, LANGGRAPH_RUNTIME, LANGGRAPH_APPLICATION],
     };
   }
+}
+
+/** Create a Nest DynamicModule and typed service from one graph resource. */
+export function createNestJSAdapter<TGraph extends object>(graph: TGraph, options: NestJSAdapterOptions = {}): NestJSAdapter<TGraph> {
+  const runtime = normalizeGraph(graph);
+  return {
+    graph,
+    runtime,
+    service: new GraphService(runtime, options.close),
+    module: LangGraphModule.forRoot({ graphs: runtime, global: options.global, close: options.close }),
+  };
+}
+
+function normalizeGraph<TGraph extends object>(graph: TGraph): GraphRegistry {
+  if (graph instanceof ToolkitRuntime) return graph;
+  const runtime = new GraphRegistry();
+  const source = graph as object;
+  const collection = source as { readonly list?: () => string[]; readonly get?: (name: string) => CompiledGraph<object> | undefined };
+  if (typeof collection.list === "function" && typeof collection.get === "function") {
+    for (const name of collection.list()) {
+      const compiled = collection.get(name);
+      if (compiled && !runtime.has(compiled.name)) runtime.add(compiled);
+    }
+    return runtime;
+  }
+  const executable = source as { readonly name?: string; readonly definition?: GraphDefinition<object>; readonly run?: (input: object) => Promise<object>; readonly stream?: (input: object) => AsyncIterable<object> };
+  if (typeof executable.name === "string" && executable.definition !== undefined && typeof executable.run === "function" && typeof executable.stream === "function") {
+    runtime.add(graph as CompiledGraph<object>);
+    return runtime;
+  }
+  const builder = source as { readonly build?: () => CompiledGraph<object> };
+  if (typeof builder.build === "function") {
+    runtime.add(builder.build());
+    return runtime;
+  }
+  throw new GraphRuntimeError("createNestJSAdapter requires a compiled graph, graph builder, runtime, or registry.");
 }
 
 export { GraphRuntimeError };

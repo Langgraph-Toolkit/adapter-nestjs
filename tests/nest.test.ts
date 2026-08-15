@@ -1,9 +1,10 @@
 import { firstValueFrom, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
-import { defineGraph, defineState } from "@langgraph-toolkit/core";
+import { defineGraph, defineState } from "@langgraph-toolkit/core/legacy";
 import { GraphRegistry } from "@langgraph-toolkit/core/runtime";
 import {
   BoundGraphService,
+  createNestJSAdapter,
   GraphHttpExceptionFilter,
   GraphService,
   LangGraphModule,
@@ -49,5 +50,11 @@ describe("adapter-nestjs", () => {
 
   it("exposes a typed HTTP filter for toolkit errors", () => {
     expect(GraphHttpExceptionFilter).toBeDefined();
+  });
+
+  it("creates a module and service from an existing registry", () => {
+    const adapter = createNestJSAdapter(makeRegistry());
+    expect(adapter.service.list()).toEqual(["ping"]);
+    expect(adapter.module.module).toBe(LangGraphModule);
   });
 });
