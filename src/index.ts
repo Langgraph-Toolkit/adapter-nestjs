@@ -16,16 +16,26 @@ import type {
 } from "@nestjs/common";
 import type {
   CompiledGraph,
+  Checkpoint,
   GraphDefinition,
   DefaultGraphContracts,
   GraphContracts,
   JsonObject,
+  JsonValue,
   RunOptions,
   RunResult,
   StepEvent,
 } from "@langgraph-toolkit/core";
 import { GraphRegistry } from "@langgraph-toolkit/core/runtime";
-import { ToolkitRuntime } from "@langgraph-toolkit/core/runtime";
+import {
+  createGraphLifecycle,
+  ToolkitRuntime,
+  type GraphForkRequest,
+  type GraphInvokeRequest,
+  type GraphLifecycle,
+  type GraphReplayRequest,
+  type GraphResumeRequest,
+} from "@langgraph-toolkit/core/runtime";
 import { GraphRuntimeError, ToolkitError } from "@langgraph-toolkit/core";
 
 /** JSON-safe error payload emitted by Nest SSE streams. */
@@ -106,10 +116,14 @@ export class BoundGraphService<
 
 /** Nest-injectable wrapper around GraphRegistry with explicit generic methods. */
 export class GraphService {
+  readonly lifecycle: GraphLifecycle;
+
   constructor(
     private readonly registry: GraphRegistry,
     private readonly closeHook?: () => Promise<void>,
-  ) {}
+  ) {
+    this.lifecycle = createGraphLifecycle(registry);
+  }
 
   async onModuleDestroy(): Promise<void> {
     await this.closeHook?.();
@@ -121,6 +135,41 @@ export class GraphService {
 
   list(): string[] {
     return this.registry.list();
+  }
+
+  /** Canonical invoke lifecycle used by Nest controllers. */
+  invoke(name: string, request: GraphInvokeRequest): Promise<RunResult<JsonObject>> {
+    return this.lifecycle.invoke(name, request);
+  }
+
+  /** Resume an interrupted graph from its most recent checkpoint. */
+  resume(name: string, request: GraphResumeRequest): Promise<RunResult<JsonObject>> {
+    return this.lifecycle.resume(name, request);
+  }
+
+  /** Abort an in-flight graph operation identified by graph and thread. */
+  cancel(name: string, threadId: string): boolean {
+    return this.lifecycle.cancel(name, threadId);
+  }
+
+  /** Read the latest state checkpoint for a thread. */
+  state(name: string, threadId: string): Promise<Checkpoint<JsonObject> | null> {
+    return this.lifecycle.state(name, threadId);
+  }
+
+  /** Read retained checkpoints in chronological order for a thread. */
+  history(name: string, threadId: string): Promise<readonly Checkpoint<JsonObject>[]> {
+    return this.lifecycle.history(name, threadId);
+  }
+
+  /** Run from an explicit retained checkpoint for deterministic replay. */
+  replay(name: string, request: GraphReplayRequest): Promise<RunResult<JsonObject>> {
+    return this.lifecycle.replay(name, request);
+  }
+
+  /** Copy one retained checkpoint into a new branch thread. */
+  fork(name: string, request: GraphForkRequest): Promise<Checkpoint<JsonObject>> {
+    return this.lifecycle.fork(name, request);
   }
 
   /** Bind one graph name once so controllers can reuse a fully typed facade. */
@@ -253,6 +302,8 @@ export interface NestJSAdapterOptions extends Pick<LangGraphModuleOptions, "glob
 export interface NestJSAdapter<TGraph extends object = object> {
   readonly graph: TGraph;
   readonly runtime: GraphRegistry;
+  /** Canonical graph lifecycle for controllers that expose HTTP routes. */
+  readonly lifecycle: GraphLifecycle;
   readonly service: GraphService;
   readonly module: DynamicModule;
 }
@@ -332,10 +383,12 @@ export class LangGraphModule {
 /** Create a Nest DynamicModule and typed service from one graph resource. */
 export function createNestJSAdapter<TGraph extends object>(graph: TGraph, options: NestJSAdapterOptions = {}): NestJSAdapter<TGraph> {
   const runtime = normalizeGraph(graph);
+  const service = new GraphService(runtime, options.close);
   return {
     graph,
     runtime,
-    service: new GraphService(runtime, options.close),
+    lifecycle: service.lifecycle,
+    service,
     module: LangGraphModule.forRoot({ graphs: runtime, global: options.global, close: options.close }),
   };
 }
