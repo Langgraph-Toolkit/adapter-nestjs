@@ -1,6 +1,6 @@
 {
   "name": "@langgraph-toolkit/adapter-nestjs",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "NestJS binding for @langgraph-toolkit/core: GraphService + DynamicModule + @Sse() usage.",
   "type": "module",
   "main": "./dist/index.js",
@@ -20,7 +20,7 @@
     "test": "npm run build && vitest run"
   },
   "dependencies": {
-    "@langgraph-toolkit/core": "0.2.1"
+    "@langgraph-toolkit/core": "0.2.2"
   },
   "peerDependencies": {
     "@nestjs/common": "^10 || ^11"
